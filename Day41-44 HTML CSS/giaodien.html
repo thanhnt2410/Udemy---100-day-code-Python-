@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điều khiển phòng</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { display: inline-block; margin: 20px; }
+        .button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .chart-container { width: 250px; height: 180px; margin: 20px auto; position: relative; }
+        .chart { width: 100%; height: 100%; }
+        .chart-value { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: bold; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Điều khiển phòng</h1>
+    
+    <div class="container">
+        <button class="button" onclick="toggleDevice('light')">Bật/Tắt đèn</button>
+        <button class="button" onclick="toggleDevice('fan')">Bật/Tắt quạt</button>
+        <button class="button" onclick="toggleDevice('ac')">Bật/Tắt điều hòa</button>
+    </div>
+
+    <div class="container">
+        <div class="chart-container">
+            <canvas id="temperature-chart" class="chart"></canvas>
+            <div id="temperature-value" class="chart-value"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="chart-container">
+            <canvas id="humidity-chart" class="chart"></canvas>
+            <div id="humidity-value" class="chart-value"></div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDevice(device) {
+            console.log(device + " đã được bật/tắt");
+            // Thêm logic để điều khiển thiết bị thực tế ở đây
+        }
+
+        function createGauge(elementId, label, min, max, gradientColors, unit) {
+            var ctx = document.getElementById(elementId).getContext('2d');
+            var gradient = ctx.createLinearGradient(0, 0, 200, 0);
+            gradientColors.forEach((color, index) => {
+                gradient.addColorStop(index / (gradientColors.length - 1), color);
+            });
+
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [gradient, '#EEEEEE']
+                    }]
+                },
+                options: {
+                    circumference: 180,
+                    rotation: -90,
+                    cutout: '75%',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    title: {
+                        display: true,
+                        text: label,
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    layout: {
+                        padding: { top: 20, right: 20, bottom: 30, left: 20 }
+                    }
+                },
+                plugins: [{
+                    afterDraw: chart => {
+                        var ctx = chart.ctx;
+                        var xCenter = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                        var yCenter = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                        var radius = chart.outerRadius;
+                        
+                        // Vẽ các vạch chia và số
+                        ctx.fillStyle = '#333';
+                        ctx.font = '12px Arial';
+                        for (let i = 0; i <= 10; i++) {
+                            let value = min + (max - min) * i / 10;
+                            let angle = Math.PI - (i / 10) * Math.PI;
+                            let xOuter = xCenter + Math.cos(angle) * (radius + 5);
+                            let yOuter = yCenter + Math.sin(angle) * (radius + 5);
+                            let xInner = xCenter + Math.cos(angle) * (radius - 10);
+                            let yInner = yCenter + Math.sin(angle) * (radius - 10);
+                            
+                            // Vẽ vạch chia
+                            ctx.beginPath();
+                            ctx.moveTo(xInner, yInner);
+                            ctx.lineTo(xOuter, yOuter);
+                            ctx.stroke();
+                            
+                            // Vẽ số (chỉ vẽ 5 số chính)
+                            if (i % 2 === 0) {
+                                let xText = xCenter + Math.cos(angle) * (radius + 20);
+                                let yText = yCenter + Math.sin(angle) * (radius + 20);
+                                ctx.fillText(value.toFixed(0) + unit, xText, yText);
+                            }
+                        }
+                        
+                        // Vẽ kim chỉ
+                        let value = chart.data.datasets[0].data[0];
+                        let angle = Math.PI - (value / 100) * Math.PI;
+                        let xNeedle = xCenter + Math.cos(angle) * (radius - 20);
+                        let yNeedle = yCenter + Math.sin(angle) * (radius - 20);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(xCenter, yCenter);
+                        ctx.lineTo(xNeedle, yNeedle);
+                        ctx.strokeStyle = '#FF0000';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Vẽ điểm trung tâm
+                        ctx.beginPath();
+                        ctx.arc(xCenter, yCenter, 5, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#333';
+                        ctx.fill();
+                    }
+                }]
+            });
+        }
+
+        var temperatureChart = createGauge('temperature-chart', 'Nhiệt độ', 15, 35, ['blue', 'green', 'yellow', 'red'], '°C');
+        var humidityChart = createGauge('humidity-chart', 'Độ ẩm', 0, 100, ['red', 'yellow', 'green', 'blue'], '%');
+
+        function updateGauge(chart, value, min, max, elementId) {
+            var percentage = (value - min) / (max - min) * 100;
+            chart.data.datasets[0].data = [percentage, 100 - percentage];
+            chart.update();
+            document.getElementById(elementId).textContent = value.toFixed(1) + (elementId === 'temperature-value' ? '°C' : '%');
+        }
+
+        // Cập nhật dữ liệu (giả lập)
+        setInterval(() => {
+            var temperature = Math.random() * 20 + 15; // 15-35°C
+            var humidity = Math.random() * 100; // 0-100%
+            
+            updateGauge(temperatureChart, temperature, 15, 35, 'temperature-value');
+            updateGauge(humidityChart, humidity, 0, 100, 'humidity-value');
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<headd></headd>
+Nhap ten: <input id="input" value>
+<button onclick="xin_chao()">OK</button>
+<br>
+<div id ="loi_chao"></div>
+<script>
+    var xin_chao = function(){
+        var ten = document.getElementById("input").value
+        loi_chao ="Xin chao "+ten
+        document.getElementById("loichao").innerHTML = loi_chao
+        
+    }
+    var thong_bao = function()
+    {
+        document.getElementById("loi_chao")
+        .innerHTML += "Het gio"
+    }
+    setTimeout(thong_bao, 3000)
+    document.getElementById("loi_chao")
+    .innerHTML += "Xin chao <br>"
+    // localStorage.ten = "Nguyen Tuan Thanh"
+    // localStorage.diachi = "Ha Noi"
+</script>
